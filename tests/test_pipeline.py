@@ -36,3 +36,12 @@ def test_end_to_end_quick_run(tmp_path):
     assert len(sim["T"]) == len(sim["Y"]) == len(sim["s1"]) == 4_000
     assert summary["n_customers"] == 4_000
     assert {p["policy"] for p in summary["policies"]} >= {"Email no one", "Men's email to everyone"}
+    # customer-level download: one row per customer, scores match the simulator's, recommendations are valid
+    import pandas as pd
+
+    scores = pd.read_csv(site / "data" / "customer_uplift_scores.csv")
+    assert len(scores) == 4_000 and scores["customer_id"].is_unique
+    assert (scores["uplift_mens_email"].round(4) == pd.Series(sim["s1"]).round(4)).all()
+    assert set(scores["email_sent"]) == {"No email", "Men's email", "Women's email"}
+    assert set(scores["recommended_email"]) <= {"No email", "Men's email", "Women's email"}
+    assert "customer_uplift_scores.csv" in (site / "index.html").read_text()

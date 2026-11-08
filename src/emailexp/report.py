@@ -504,9 +504,27 @@ def build_site(
     budget_curve,
     shap_importance,
     simulator,
+    download: dict | None = None,
 ) -> Path:
     site_dir.mkdir(parents=True, exist_ok=True)
     (site_dir / "simulator-data.json").write_text(json.dumps(simulator, separators=(",", ":")))
+    download_html = ""
+    if download:
+        cols = "".join(
+            f"<tr><td><code>{c}</code></td><td style='text-align:left'>{html.escape(d)}</td></tr>"
+            for c, d in download["columns"].items()
+        )
+        rec = " · ".join(f"{k}: {v:,}" for k, v in download["recommended"].items())
+        download_html = (
+            "<section id='data'><h2>Download the customer scores</h2><p>Every customer in one file: what they bought "
+            "before, the email they were randomly sent, what they did in the next two weeks, the champion model's "
+            f"({html.escape(download['model'].lower())}) predicted extra spend from each email, and the email the "
+            f"targeting policy would send them ({rec}). <a href='{download['file']}' download><b>"
+            f"customer_uplift_scores.csv</b></a> ({download['rows']:,} rows, {download['kb']:,} KB).</p>"
+            "<details><summary>Columns</summary><div class='tablewrap'><table><thead><tr><th>Column</th>"
+            f"<th style='text-align:left'>Meaning</th></tr></thead><tbody>{cols}</tbody></table></div></details>"
+            "</section>"
+        )
     e = effects.set_index(["arm", "outcome"])
     men_v, men_s, wom_v = (
         e.loc[("Men's email", "visit")],
@@ -629,7 +647,7 @@ def build_site(
   <h1>Email Campaign Experiment: A/B Testing &amp; Uplift Modeling</h1>
   <p>{results["n_customers"]:,} customers were randomly sent a men's merchandise email, a women's merchandise email, or
   nothing, then tracked for two weeks. Did the emails work, for whom, and who should get one next time?
-  <a href="{REPO_URL}">Code on GitHub</a></p>
+  <a href="{REPO_URL}">Code on GitHub</a>{" · <a href='#data'>Download the customer scores</a>" if download else ""}</p>
 </div></header>
 <main>
 <div class="cards">{cards}</div>
@@ -706,6 +724,7 @@ live in your browser from the {results["n_customers"]:,} real customers.</p>
 dollars of predicted extra spend.</p>
 {_div(fig_shap(shap_importance))}</section>
 
+{download_html}
 <section><h2>How it was built</h2><ul class="method">
 <li><b>Data:</b> Kevin Hillstrom's MineThatData E-Mail Analytics Challenge (2008): 64,000 customers who purchased
 in the prior year, randomized into three equal groups. Loaded and summarized with DuckDB SQL.</li>

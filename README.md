@@ -4,7 +4,8 @@
 [![Report](https://github.com/dvskaff/email-campaign-uplift/actions/workflows/pages.yml/badge.svg)](https://dvskaff.github.io/email-campaign-uplift/)
 ![Python](https://img.shields.io/badge/python-3.13-blue)
 
-**Live report and targeting simulator: https://dvskaff.github.io/email-campaign-uplift/**
+* **Report:** [results and the targeting simulator](https://dvskaff.github.io/email-campaign-uplift/)
+* **Data:** [every customer with predicted uplift and recommended email (CSV)](https://dvskaff.github.io/email-campaign-uplift/data/customer_uplift_scores.csv)
 
 64,000 customers of an online retailer were randomly split into three groups: one received an email
 featuring men's merchandise, one an email featuring women's merchandise, and one received nothing. Visits,
@@ -44,6 +45,23 @@ _64,000 customers · sample-ratio check p = 0.90 · largest covariate imbalance 
 
 ## How it works
 
+```mermaid
+flowchart LR
+    CSV["Hillstrom email experiment<br/>64,000 customers, 3 arms"] --> DUCK["DuckDB<br/>clean + SQL summaries"]
+    DUCK --> AB["A/B analysis<br/>SRM, balance, CIs,<br/>Holm, CUPED, power"]
+    DUCK --> UP["Uplift models<br/>causal forest, X-learner<br/>5-fold cross-fitting"]
+    UP --> QINI["Qini curves<br/>vs. rule and random"]
+    UP --> POL["Targeting policies<br/>IPW value in dollars"]
+    UP --> SHAP["SHAP<br/>what drives uplift"]
+    AB --> SITE["Report + simulator<br/>(GitHub Pages)"]
+    QINI --> SITE
+    POL --> SITE
+    SHAP --> SITE
+    UP --> DL["Customer scores<br/>CSV download"]
+```
+
+<details><summary>Every step in detail</summary>
+
 ```
 data/hillstrom.csv ──► DuckDB (clean + SQL summaries in sql/)
                          │
@@ -57,6 +75,8 @@ data/hillstrom.csv ──► DuckDB (clean + SQL summaries in sql/)
                                              (published to GitHub Pages)
 ```
 
+</details>
+
 | Folder / file | What it does |
 |---|---|
 | `sql/` | DuckDB SQL: per-group summary and segment-level lift |
@@ -65,6 +85,7 @@ data/hillstrom.csv ──► DuckDB (clean + SQL summaries in sql/)
 | `src/emailexp/uplift.py` | Uplift models, cross-fitting, Qini evaluation, SHAP |
 | `src/emailexp/policy.py` | Turns predictions into who-gets-which-email decisions and values them |
 | `src/emailexp/report.py` | Builds the website in `site/` |
+| `src/emailexp/downloads.py` | Writes the customer-level CSV: outcomes, out-of-fold uplift and recommended email |
 | `src/emailexp/pipeline.py` | Runs everything end to end |
 | `tests/` | pytest suite: statistics on simulated data with known answers, plus an end-to-end run |
 | `.github/workflows/` | `ci.yml` (lint + tests on every push), `pages.yml` (full analysis + deploy) |

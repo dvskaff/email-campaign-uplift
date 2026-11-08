@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from . import data
+from . import downloads as dl
 from . import experiment as ex
 from . import policy as po
 from . import uplift as up
@@ -138,6 +139,7 @@ def run(cfg: Config) -> dict:
         "p": [propensity[0], propensity[1], propensity[2]],
         "per": po.PER,
     }
+    download = dl.write(cfg.site_dir, df, dollar_scores[champion], cfg.margin, cfg.email_cost, champion)
     build_site(
         cfg.site_dir,
         results=results,
@@ -152,6 +154,7 @@ def run(cfg: Config) -> dict:
         budget_curve=budget_curve,
         shap_importance=shap_importance,
         simulator=simulator,
+        download=download,
     )
     summary = {
         **results,
